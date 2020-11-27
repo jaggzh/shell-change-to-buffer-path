@@ -1,0 +1,43 @@
+#!/bin/bash
+#OIFS="$IFS"
+#IFS=","
+mapfile -t choices < <(
+  tmux capture-pane -p -J |
+    grep '/.*/' |
+    perl -pe 's#^.*?(\S*/(\S|/)+)#$1#;  s/[ \t]*$//;' |
+    #perl -pe 's#^.*?(\S*/(\S|/)+)#$1#; s/:.*$//; s/[ \t]*$//;' |
+	grep '/.*/' |
+    awk '!mem[$0]++'
+)
+#IFS="$OIFS"
+# Debug: Display the list of found entries:
+#printf "%s\n" "${choices[@]}"
+#exit
+if [[ "${#choices[@]}" == 1 ]]; then
+	#echo "One choice found:"
+	printf '%s\n' "${choices[0]}"
+elif [[ "${#choices[@]}" > 1 ]]; then
+	#echo "Multiple choices found:"
+	# Remove non-dirs and non-files
+	for index in "${!choices[@]}" ; do
+		cho="${choices[$index]}"
+		#echo "Evaluating choice: $index: ${choices[$index]}"
+		#echo "Evaluating choice: $index: {$cho}"
+		if [[ ! -d "$cho" && ! -f "$cho" ]]; then
+			#echo " Removing $index: $cho"
+			unset -v 'choices[$index]'
+		fi
+	done
+			#ARR=("${ARR[@]}")
+	#echo "Choices:" "${choices[@]}"
+	select ch in "${choices[@]}"; do
+		# Another stat, to change to path/of_a_file.ext.
+		# Sorrow.
+		if [[ -d "$ch" ]]; then
+			printf '%s\n' "$ch"
+		else
+			printf '%s\n' "${ch%/*}"
+		fi
+		break
+	done
+fi
